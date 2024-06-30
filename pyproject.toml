@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "folder2podcast"
+version = "0.1.0"
+description = ""
+authors = ["DreamFlasher <31695+dreamflasher@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pod2gen = "^1.0.3"
+fire = "^0.6.0"
+mutagen = "^1.47.0"
+python-dateutil = "^2.9.0.post0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
