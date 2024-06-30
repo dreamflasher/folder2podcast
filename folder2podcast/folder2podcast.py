@@ -58,7 +58,7 @@ def make_rss(folder: Path, cfg: dict):
         try:
             e.publication_date = dparser.parse(title_from_name, fuzzy=True)
         except:
-            e.publication_date = datetime.fromtimestamp(audio_file.stat().st_mtime)
+            e.publication_date = datetime.fromtimestamp(audio_file.stat().st_mtime, tz=datetime.timezone.utc)
 
         e.media = Media(url, audio_file.stat().st_size, duration=datetime.timedelta(seconds=audio_meta.info.length))
     p.rss_file(folder / "podcast.rss")
