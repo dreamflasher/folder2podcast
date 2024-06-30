@@ -43,8 +43,7 @@ def make_rss(folder: Path, cfg: dict):
 
     for audio_file in audios:
         audio_meta = File(audio_file)
-        if audio_meta is None:
-            print(audio_file)
+        print(audio_file)
 
         title_from_name = audio_file.stem
         suffix_length = len(Path(title_from_name).suffix)
