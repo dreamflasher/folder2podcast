@@ -8,9 +8,7 @@ from fire import Fire
 from mutagen import File
 from pod2gen import (AlternateMedia, Category, Funding, License, Location, Media, Person, Podcast, Soundbite, Trailer, Transcript, htmlencode)
 
-audio_extensions = {
-    '.mp3', '.aac', '.flac', '.ogg', '.m4a', '.m4b', '.mpc', '.wma', '.wav', '.wv', '.mp4', '.asf', '.ape', '.wmv', '.m4p', '.m4r', '.mpp', '.opus', '.spx',
-    '.ogv', '.oga', '.tta', '.ofr', '.ofs', '.aiff', '.aif', '.aifc'}
+audio_extensions = {'.mp3', '.aac', '.ogg', '.m4a', '.wav', '.mp4', '.aiff', '.m4v', '.mov'}  # allowed according to itunes specification
 
 
 class DotDict(dict):
@@ -37,11 +35,13 @@ def make_rss(folder: Path, cfg: dict):
     p = Podcast()
     p.name = folder.name
     p.description = folder.name
-    p.feed_url = f"{cfg.base_url}/{folder}/podcast.rss"
+    p.feed_url = f"{cfg.base_url}/{urllib.parse.quote(folder.name)}/podcast.rss"
+    p.website = cfg.base_url
+    p.explicit = False
 
     audios = [file for file in folder.rglob('*') if file.suffix in audio_extensions]
 
-    for audio_file in audios:
+    for i, audio_file in enumerate(audios):
         audio_meta = File(audio_file)
         print(audio_file)
 
@@ -54,7 +54,7 @@ def make_rss(folder: Path, cfg: dict):
         e = p.add_episode()
         e.id = url
         e.title = title_from_name
-        e.episode_number = 1
+        e.episode_number = i + 1
 
         try:
             e.publication_date = dparser.parse(title_from_name, fuzzy=True)
@@ -62,7 +62,7 @@ def make_rss(folder: Path, cfg: dict):
             e.publication_date = datetime.datetime.fromtimestamp(audio_file.stat().st_mtime, tz=datetime.timezone.utc)
 
         e.media = Media(url, audio_file.stat().st_size, duration=datetime.timedelta(seconds=audio_meta.info.length))
-    p.rss_file(folder / "podcast.rss")
+    p.rss_file(str(folder / "podcast.rss"))
 
 
 def main(root: Path):
@@ -74,7 +74,8 @@ def main(root: Path):
     cfg = DotDict.loadJSON(root / "config.json")
 
     for folder in root.iterdir():
-        make_rss(folder, cfg)
+        if folder.is_dir():
+            make_rss(folder, cfg)
 
 
 if __name__ == '__main__':
