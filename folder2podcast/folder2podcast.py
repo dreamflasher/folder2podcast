@@ -58,7 +58,10 @@ def make_rss(folder: Path, cfg: dict):
             e.publication_date = datetime.datetime.fromtimestamp(audio_file.stat().st_mtime, tz=datetime.timezone.utc)
 
         e.media = Media(url, audio_file.stat().st_size)
-        e.media.populate_duration_from(audio_file)
+        try:
+            e.media.populate_duration_from(audio_file)
+        except:
+            print(f"Failed to populate duration for {audio_file}")
     p.rss_file(folder / "podcast.rss")
 
 
