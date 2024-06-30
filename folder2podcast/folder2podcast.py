@@ -5,6 +5,7 @@ from pathlib import Path
 
 import dateutil.parser as dparser
 from fire import Fire
+from mutagen import File
 from pod2gen import (AlternateMedia, Category, Funding, License, Location, Media, Person, Podcast, Soundbite, Trailer, Transcript, htmlencode)
 
 audio_extensions = {
@@ -41,6 +42,10 @@ def make_rss(folder: Path, cfg: dict):
     audios = [file for file in folder.rglob('*') if file.suffix in audio_extensions]
 
     for audio_file in audios:
+        audio_meta = File(audio_file)
+        if audio_meta is None:
+            print(audio_file)
+
         title_from_name = audio_file.stem
         suffix_length = len(Path(title_from_name).suffix)
         if suffix_length >= 1 and suffix_length <= 5:
@@ -57,11 +62,7 @@ def make_rss(folder: Path, cfg: dict):
         except:
             e.publication_date = datetime.datetime.fromtimestamp(audio_file.stat().st_mtime, tz=datetime.timezone.utc)
 
-        e.media = Media(url, audio_file.stat().st_size)
-        try:
-            e.media.populate_duration_from(audio_file)
-        except:
-            print(f"Failed to populate duration for {audio_file}")
+        e.media = Media(url, audio_file.stat().st_size, duration=datetime.timedelta(seconds=audio_meta.info.length))
     p.rss_file(folder / "podcast.rss")
 
 
