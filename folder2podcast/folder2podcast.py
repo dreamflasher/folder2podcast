@@ -4,9 +4,16 @@ import urllib.parse
 from pathlib import Path
 
 import dateutil.parser as dparser
+import mutagen
+import mutagen.aac
+import mutagen.aiff
+import mutagen.mp3
+import mutagen.mp4
+import mutagen.oggvorbis
+import mutagen.wave
+import pytz
 from fire import Fire
-from mutagen import File
-from pod2gen import (AlternateMedia, Category, Funding, License, Location, Media, Person, Podcast, Soundbite, Trailer, Transcript, htmlencode)
+from pod2gen import Episode, Media, Podcast
 
 audio_extensions = {'.mp3', '.aac', '.ogg', '.m4a', '.wav', '.mp4', '.aiff', '.m4v', '.mov'}  # allowed according to itunes specification
 
@@ -27,6 +34,18 @@ class DotDict(dict):
             return DotDict(json.load(file))
 
 
+def metadata(file: Path):
+    """
+    workaround the mutagen bug that they can't handle wrong file extensions
+    """
+    for t in [mutagen.File, mutagen.mp3.MP3, mutagen.mp4.MP4, mutagen.aac.AAC, mutagen.oggvorbis.OggVorbis, mutagen.wave.WAVE, mutagen.aiff.AIFF]:
+        try:
+            assert t(file).info is not None
+            return t(file)
+        except Exception as e:
+            pass
+
+
 def make_rss(folder: Path, cfg: dict):
     """
 	1) get all audio files recursively
@@ -40,10 +59,13 @@ def make_rss(folder: Path, cfg: dict):
     p.explicit = False
 
     audios = [file for file in folder.rglob('*') if file.suffix in audio_extensions]
+    if len(audios) == 0:
+        return
 
-    for i, audio_file in enumerate(audios):
-        audio_meta = File(audio_file)
-        print(audio_file)
+    episodes = []
+
+    for audio_file in audios:
+        audio_meta = metadata(audio_file)
 
         title_from_name = audio_file.stem
         suffix_length = len(Path(title_from_name).suffix)
@@ -51,28 +73,36 @@ def make_rss(folder: Path, cfg: dict):
             title_from_name = Path(title_from_name).stem
 
         url = cfg.base_url + urllib.parse.quote(f"/{folder.name}/{audio_file.relative_to(folder)}")
-        e = p.add_episode()
+        e = Episode()
         e.id = url
         e.title = title_from_name
-        e.episode_number = i + 1
+        e.summary = title_from_name
 
         try:
-            e.publication_date = dparser.parse(title_from_name, fuzzy=True)
-        except:
+            e.publication_date = pytz.utc.localize(dparser.parse(timestr=title_from_name, fuzzy=True, ignoretz=True))
+        except Exception as ex:
             e.publication_date = datetime.datetime.fromtimestamp(audio_file.stat().st_mtime, tz=datetime.timezone.utc)
 
         e.media = Media(url, audio_file.stat().st_size, duration=datetime.timedelta(seconds=audio_meta.info.length))
+
+        episodes.append(e)
+
+    episodes = sorted(episodes, key=lambda e: e.publication_date)
+    for i, ep in enumerate(episodes):
+        ep.episode_number = i + 1
+        p.episodes.append(ep)
+
     p.rss_file(str(folder / "podcast.rss"))
 
 
-def main(root: Path):
+def main(cfg_file: Path):
     """
 	1) loop over all folders in the root folder
 	"""
-    root = Path(root)
+    cfg = DotDict.loadJSON(cfg_file)
+    root = Path(cfg["root_folder"])
 
-    cfg = DotDict.loadJSON(root / "config.json")
-
+    make_rss(root, cfg)
     for folder in root.iterdir():
         if folder.is_dir():
             make_rss(folder, cfg)
