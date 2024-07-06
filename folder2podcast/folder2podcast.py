@@ -102,10 +102,14 @@ def main(cfg_file: Path):
     cfg = DotDict.loadJSON(cfg_file)
     root = Path(cfg["root_folder"])
 
-    make_rss(root, cfg)
+    subfolders = 0
     for folder in root.iterdir():
         if folder.is_dir():
+            subfolders += 1
             make_rss(folder, cfg)
+
+    if subfolders == 0:
+        make_rss(root, cfg)
 
 
 if __name__ == '__main__':
