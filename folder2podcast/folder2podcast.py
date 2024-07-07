@@ -50,6 +50,9 @@ def make_rss(folder: Path, cfg: dict):
     """
 	1) get all audio files recursively
 	"""
+    p_cfg = {}
+    if (folder / "config.json").exists():
+        p_cfg = DotDict.loadJSON(folder / "config.json")
 
     p = Podcast()
     p.name = folder.name
@@ -57,6 +60,11 @@ def make_rss(folder: Path, cfg: dict):
     p.feed_url = f"{cfg.base_url}/{urllib.parse.quote(folder.name)}/podcast.rss"
     p.website = cfg.base_url
     p.explicit = False
+    if (folder / "image.jpg").exists():
+        p.image = f"{cfg.base_url}/{urllib.parse.quote(folder.name)}/image.jpg"
+
+    for k, v in p_cfg.items():
+        setattr(p, k, v)
 
     audios = [file for file in folder.rglob('*') if file.suffix in audio_extensions]
     if len(audios) == 0:
